@@ -100,7 +100,7 @@ func (km *KeyManager) ValidateKey(keyPath string) error {
 
 // GetFingerprint gets the SSH fingerprint of a host
 func (km *KeyManager) GetFingerprint(host string, port int) (string, error) {
-	address := fmt.Sprintf("%s:%d", host, port)
+	address := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 
 	// Set timeout for connection
 	conn, err := net.DialTimeout("tcp", address, 10*time.Second)
@@ -109,29 +109,38 @@ func (km *KeyManager) GetFingerprint(host string, port int) (string, error) {
 	}
 	defer conn.Close()
 
+	var hostKey ssh.PublicKey
 	// Perform SSH handshake to get host key
 	sshConn, chans, reqs, err := ssh.NewClientConn(conn, address, &ssh.ClientConfig{
-		User:            "dummy", // We don't need to authenticate
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         5 * time.Second,
+		User: "dummy", // We don't need to authenticate
+		HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+			hostKey = key
+			return nil
+		},
+		Timeout: 5 * time.Second,
 	})
-	if err != nil {
+	if err != nil && hostKey == nil {
 		// Try to extract host key from error if possible
 		return "", fmt.Errorf("failed SSH handshake with %s: %w", address, err)
 	}
-	defer sshConn.Close()
-	defer func() {
-		go ssh.DiscardRequests(reqs)
-		go func() {
-			for newChannel := range chans {
-				newChannel.Reject(ssh.UnknownChannelType, "not implemented")
-			}
+	if sshConn != nil {
+		defer sshConn.Close()
+		defer func() {
+			go ssh.DiscardRequests(reqs)
+			go func() {
+				for newChannel := range chans {
+					newChannel.Reject(ssh.UnknownChannelType, "not implemented")
+				}
+			}()
 		}()
-	}()
+	}
 
-	// Get server's host key
-	hostKey := sshConn.ServerVersion()
-	return hostKey, nil
+	// Get host key fingerprint
+	if hostKey == nil {
+		return "", fmt.Errorf("could not retrieve host key")
+	}
+
+	return ssh.FingerprintSHA256(hostKey), nil
 }
 
 // InstallPublicKey installs a public key on a remote server
@@ -165,7 +174,7 @@ func (km *KeyManager) InstallPublicKey(host, user, keyPath string, port int) err
 	}
 
 	// Connect to remote server
-	address := fmt.Sprintf("%s:%d", host, port)
+	address := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 	client, err := ssh.Dial("tcp", address, config)
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s: %w", address, err)
@@ -221,7 +230,7 @@ func (km *KeyManager) TestConnection(host, user, keyPath string, port int) error
 	}
 
 	// Connect to remote server
-	address := fmt.Sprintf("%s:%d", host, port)
+	address := net.JoinHostPort(host, fmt.Sprintf("%d", port))
 	client, err := ssh.Dial("tcp", address, config)
 	if err != nil {
 		return fmt.Errorf("failed to connect to %s: %w", address, err)

@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/ssh-tunnel-manager/ssh-tunnel-manager/internal/config"
+	"github.com/ssh-tunnel-manager/ssh-tunnel-manager/internal/interactive"
 	"github.com/ssh-tunnel-manager/ssh-tunnel-manager/pkg/logger"
 )
 
@@ -51,6 +52,14 @@ Features:
 			}
 
 			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// If no subcommand is specified, start interactive mode
+			if len(args) == 0 {
+				fmt.Println("Starting interactive mode...")
+				return interactive.StartInteractiveMode()
+			}
+			return cmd.Help()
 		},
 	}
 
