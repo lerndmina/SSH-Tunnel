@@ -101,7 +101,7 @@ func (km *KeyManager) ValidateKey(keyPath string) error {
 // GetFingerprint gets the SSH fingerprint of a host
 func (km *KeyManager) GetFingerprint(host string, port int) (string, error) {
 	address := fmt.Sprintf("%s:%d", host, port)
-	
+
 	// Set timeout for connection
 	conn, err := net.DialTimeout("tcp", address, 10*time.Second)
 	if err != nil {

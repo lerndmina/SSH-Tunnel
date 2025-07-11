@@ -37,10 +37,10 @@ func NewManager() *Manager {
 	manager := &Manager{
 		templates: make(map[string]*Template),
 	}
-	
+
 	// Load built-in templates
 	manager.loadBuiltinTemplates()
-	
+
 	return manager
 }
 
@@ -450,7 +450,7 @@ func (m *Manager) GetCategories() []string {
 	for _, tmpl := range m.templates {
 		categories[tmpl.Category] = true
 	}
-	
+
 	result := make([]string, 0, len(categories))
 	for category := range categories {
 		result = append(result, category)
@@ -464,18 +464,18 @@ func (m *Manager) Apply(templateName string, variables map[string]interface{}) (
 	if err != nil {
 		return nil, err
 	}
-	
+
 	// Validate required variables
 	if err := m.validateVariables(tmpl, variables); err != nil {
 		return nil, err
 	}
-	
+
 	// Apply template rendering
 	renderedConfig, err := m.renderTemplate(tmpl, variables)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render template: %w", err)
 	}
-	
+
 	return renderedConfig, nil
 }
 
@@ -483,21 +483,21 @@ func (m *Manager) Apply(templateName string, variables map[string]interface{}) (
 func (m *Manager) validateVariables(tmpl *Template, variables map[string]interface{}) error {
 	for varName, varDef := range tmpl.Variables {
 		value, exists := variables[varName]
-		
+
 		if varDef.Required && !exists {
 			return fmt.Errorf("required variable '%s' is missing", varName)
 		}
-		
+
 		if !exists && varDef.Default != nil {
 			variables[varName] = varDef.Default
 		}
-		
+
 		if exists {
 			// Type validation
 			if err := m.validateVariableType(varName, value, varDef.Type); err != nil {
 				return err
 			}
-			
+
 			// Additional validation
 			if varDef.Validation != "" {
 				if err := m.validateVariableValue(varName, value, varDef.Validation); err != nil {
@@ -506,7 +506,7 @@ func (m *Manager) validateVariables(tmpl *Template, variables map[string]interfa
 			}
 		}
 	}
-	
+
 	return nil
 }
 
@@ -535,7 +535,7 @@ func (m *Manager) validateVariableValue(name string, value interface{}, validati
 	if !ok {
 		return nil // Only validate string values for now
 	}
-	
+
 	switch validation {
 	case "ip":
 		// Simple IP validation
@@ -545,7 +545,7 @@ func (m *Manager) validateVariableValue(name string, value interface{}, validati
 		}
 		// Could add more sophisticated IP validation here
 	}
-	
+
 	return nil
 }
 
@@ -553,25 +553,25 @@ func (m *Manager) validateVariableValue(name string, value interface{}, validati
 func (m *Manager) renderTemplate(tmpl *Template, variables map[string]interface{}) (*config.Config, error) {
 	// Convert config to JSON string for template processing
 	configStr := m.configToTemplateString(&tmpl.Config)
-	
+
 	// Create template
 	t, err := template.New("config").Parse(configStr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse template: %w", err)
 	}
-	
+
 	// Render template
 	var rendered strings.Builder
 	if err := t.Execute(&rendered, variables); err != nil {
 		return nil, fmt.Errorf("failed to execute template: %w", err)
 	}
-	
+
 	// Parse back to config
 	renderedConfig, err := m.templateStringToConfig(rendered.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse rendered config: %w", err)
 	}
-	
+
 	return renderedConfig, nil
 }
 

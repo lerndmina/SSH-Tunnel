@@ -24,17 +24,17 @@ FROM alpine:latest
 
 # Install runtime dependencies
 RUN apk add --no-cache \
-    openssh-client \
-    ca-certificates \
-    tzdata
+  openssh-client \
+  ca-certificates \
+  tzdata
 
 # Create non-root user
 RUN addgroup -g 1001 -S ssh-tunnel && \
-    adduser -u 1001 -S ssh-tunnel -G ssh-tunnel
+  adduser -u 1001 -S ssh-tunnel -G ssh-tunnel
 
 # Create necessary directories
 RUN mkdir -p /home/ssh-tunnel/.ssh-tunnel-manager && \
-    chown -R ssh-tunnel:ssh-tunnel /home/ssh-tunnel
+  chown -R ssh-tunnel:ssh-tunnel /home/ssh-tunnel
 
 # Copy binary from builder
 COPY --from=builder /app/build/ssh-tunnel /usr/local/bin/ssh-tunnel

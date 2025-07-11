@@ -12,7 +12,7 @@ type LogLevel int
 const (
 	// PanicLevel level, highest level of severity. Logs and then calls panic with the message passed in.
 	PanicLevel LogLevel = iota
-	// FatalLevel level. Logs and then calls `os.Exit(1)`. 
+	// FatalLevel level. Logs and then calls `os.Exit(1)`.
 	FatalLevel
 	// ErrorLevel level. Logs. Used for errors that should definitely be noted.
 	ErrorLevel

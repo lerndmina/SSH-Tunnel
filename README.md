@@ -60,6 +60,7 @@ ssh-tunnel setup
 ```
 
 The interactive setup wizard will guide you through:
+
 - Tunnel configuration
 - SSH key setup
 - Cloud server connection
@@ -137,6 +138,7 @@ ssh-tunnel diagnostics [tunnel-name]
 ### Configuration File
 
 Configuration files are stored in:
+
 - Linux/macOS: `~/.ssh-tunnel-manager/`
 - Windows: `%USERPROFILE%\.ssh-tunnel-manager\`
 
@@ -247,6 +249,7 @@ make release
 ```
 
 Supported platforms:
+
 - Linux: amd64, arm64, arm
 - macOS: amd64, arm64
 - Windows: amd64
@@ -262,6 +265,7 @@ ssh-tunnel monitor
 ```
 
 Features:
+
 - Live tunnel status
 - Connection metrics
 - Performance graphs
@@ -277,6 +281,7 @@ ssh-tunnel diagnostics my-tunnel --performance
 ```
 
 Includes:
+
 - Network connectivity tests
 - SSH authentication validation
 - Performance measurements
@@ -287,12 +292,14 @@ Includes:
 To migrate from the original bash script:
 
 1. **Export existing configuration**:
+
    ```bash
    # If you have the old script config
    ssh-tunnel template apply migration my-existing-tunnel
    ```
 
 2. **Import SSH keys**:
+
    ```bash
    # The setup wizard will help import existing keys
    ssh-tunnel setup --import-keys

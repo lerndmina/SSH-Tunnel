@@ -44,8 +44,8 @@ type ServiceStatus struct {
 
 // program implements the service.Interface
 type program struct {
-	config       *config.Config
-	tunnelName   string
+	config         *config.Config
+	tunnelName     string
 	serviceManager *ServiceManager
 }
 
@@ -69,7 +69,7 @@ func (p *program) Stop(s service.Service) error {
 // Install installs a service for a tunnel
 func (sm *ServiceManager) Install(tunnelConfig *config.Config) error {
 	serviceName := tunnelConfig.Service.Name
-	
+
 	// Get current executable path
 	executable, err := sm.getExecutablePath()
 	if err != nil {
@@ -80,12 +80,12 @@ func (sm *ServiceManager) Install(tunnelConfig *config.Config) error {
 	svcConfig := &service.Config{
 		Name:        serviceName,
 		DisplayName: fmt.Sprintf("SSH Tunnel: %s", tunnelConfig.TunnelName),
-		Description: fmt.Sprintf("SSH Tunnel service for %s to %s@%s", 
-			tunnelConfig.TunnelName, 
-			tunnelConfig.CloudServer.User, 
+		Description: fmt.Sprintf("SSH Tunnel service for %s to %s@%s",
+			tunnelConfig.TunnelName,
+			tunnelConfig.CloudServer.User,
 			tunnelConfig.CloudServer.IP),
-		Executable:  executable,
-		Arguments:   []string{"daemon", "--tunnel", tunnelConfig.TunnelName},
+		Executable: executable,
+		Arguments:  []string{"daemon", "--tunnel", tunnelConfig.TunnelName},
 		Dependencies: []string{
 			"Requires=network.target",
 			"After=network.target",

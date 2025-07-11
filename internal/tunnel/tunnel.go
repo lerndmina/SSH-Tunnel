@@ -77,7 +77,7 @@ func (m *Manager) Start(tunnelName string) error {
 		tunnel.mu.RLock()
 		status := tunnel.Status
 		tunnel.mu.RUnlock()
-		
+
 		if status == StatusRunning || status == StatusStarting {
 			return fmt.Errorf("tunnel '%s' is already %s", tunnelName, status)
 		}
@@ -131,7 +131,7 @@ func (m *Manager) Stop(tunnelName string) error {
 	}
 
 	tunnel.Status = StatusStopping
-	
+
 	// Cancel context to signal shutdown
 	if tunnel.cancel != nil {
 		tunnel.cancel()
@@ -154,7 +154,7 @@ func (m *Manager) Stop(tunnelName string) error {
 // Restart restarts a tunnel
 func (m *Manager) Restart(tunnelName string) error {
 	logger.Infof("Restarting tunnel '%s'", tunnelName)
-	
+
 	// Stop the tunnel if it's running
 	if err := m.Stop(tunnelName); err != nil {
 		// Log the error but continue with start
@@ -206,7 +206,7 @@ func (m *Manager) List() ([]*TunnelStatus, error) {
 	defer m.mu.RUnlock()
 
 	statuses := make([]*TunnelStatus, 0, len(m.tunnels))
-	
+
 	for name := range m.tunnels {
 		status, err := m.GetStatus(name)
 		if err != nil {
@@ -272,12 +272,12 @@ func (t *Tunnel) start() error {
 
 	// Build SSH command
 	args := t.buildSSHArgs()
-	
+
 	logger.Debugf("Starting SSH tunnel with command: ssh %v", args)
 
 	// Create the command
 	cmd := exec.CommandContext(t.ctx, "ssh", args...)
-	
+
 	// Set up process attributes
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "AUTOSSH_GATETIME=0")
@@ -362,7 +362,7 @@ func (t *Tunnel) monitor() {
 
 	// Wait for process to complete
 	err := t.Process.Wait()
-	
+
 	t.mu.Lock()
 	if err != nil && t.ctx.Err() == nil {
 		// Process exited unexpectedly

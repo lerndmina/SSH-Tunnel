@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/spf13/cobra"
 	"github.com/ssh-tunnel-manager/ssh-tunnel-manager/internal/config"
 	"github.com/ssh-tunnel-manager/ssh-tunnel-manager/pkg/logger"
-	"github.com/spf13/cobra"
 )
 
 var (
@@ -44,12 +44,12 @@ Features:
 			if verbose {
 				logger.SetLevel(logger.DebugLevel)
 			}
-			
+
 			// Load configuration
 			if err := config.Initialize(configPath); err != nil {
 				return fmt.Errorf("failed to initialize configuration: %w", err)
 			}
-			
+
 			return nil
 		},
 	}

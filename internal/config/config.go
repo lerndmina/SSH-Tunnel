@@ -26,24 +26,24 @@ var (
 
 // Config represents a tunnel configuration
 type Config struct {
-	TunnelName    string            `yaml:"tunnel_name" json:"tunnel_name" validate:"required"`
-	CloudServer   CloudServerConfig `yaml:"cloud_server" json:"cloud_server"`
-	LocalServer   LocalServerConfig `yaml:"local_server" json:"local_server"`
-	SSH           SSHConfig         `yaml:"ssh" json:"ssh"`
-	Service       ServiceConfig     `yaml:"service" json:"service"`
-	Analytics     AnalyticsConfig   `yaml:"analytics" json:"analytics"`
+	TunnelName    string             `yaml:"tunnel_name" json:"tunnel_name" validate:"required"`
+	CloudServer   CloudServerConfig  `yaml:"cloud_server" json:"cloud_server"`
+	LocalServer   LocalServerConfig  `yaml:"local_server" json:"local_server"`
+	SSH           SSHConfig          `yaml:"ssh" json:"ssh"`
+	Service       ServiceConfig      `yaml:"service" json:"service"`
+	Analytics     AnalyticsConfig    `yaml:"analytics" json:"analytics"`
 	Notifications NotificationConfig `yaml:"notifications" json:"notifications"`
-	Performance   PerformanceConfig `yaml:"performance" json:"performance"`
-	CreatedAt     time.Time         `yaml:"created_at" json:"created_at"`
-	UpdatedAt     time.Time         `yaml:"updated_at" json:"updated_at"`
+	Performance   PerformanceConfig  `yaml:"performance" json:"performance"`
+	CreatedAt     time.Time          `yaml:"created_at" json:"created_at"`
+	UpdatedAt     time.Time          `yaml:"updated_at" json:"updated_at"`
 }
 
 // CloudServerConfig contains cloud server connection details
 type CloudServerConfig struct {
-	IP       string `yaml:"ip" json:"ip" validate:"required,ip"`
-	Port     int    `yaml:"port" json:"port" validate:"required,min=1,max=65535"`
-	User     string `yaml:"user" json:"user" validate:"required"`
-	HomeDir  string `yaml:"home_dir" json:"home_dir"`
+	IP      string `yaml:"ip" json:"ip" validate:"required,ip"`
+	Port    int    `yaml:"port" json:"port" validate:"required,min=1,max=65535"`
+	User    string `yaml:"user" json:"user" validate:"required"`
+	HomeDir string `yaml:"home_dir" json:"home_dir"`
 }
 
 // LocalServerConfig contains local server details
@@ -71,10 +71,10 @@ type ServiceConfig struct {
 
 // AnalyticsConfig contains analytics and monitoring settings
 type AnalyticsConfig struct {
-	Enabled      bool   `yaml:"enabled" json:"enabled"`
-	DataFile     string `yaml:"data_file" json:"data_file"`
-	MetricsPort  int    `yaml:"metrics_port,omitempty" json:"metrics_port,omitempty"`
-	RetentionDays int   `yaml:"retention_days" json:"retention_days"`
+	Enabled       bool   `yaml:"enabled" json:"enabled"`
+	DataFile      string `yaml:"data_file" json:"data_file"`
+	MetricsPort   int    `yaml:"metrics_port,omitempty" json:"metrics_port,omitempty"`
+	RetentionDays int    `yaml:"retention_days" json:"retention_days"`
 }
 
 // NotificationConfig contains notification settings
