@@ -13,7 +13,7 @@ CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
 # Configuration
-REPO_URL="https://github.com/yourusername/ssh-tunnel-manager"
+REPO_URL="https://github.com/lerndmina/SSH-Tunnel"
 BINARY_NAME="ssh-tunnel"
 INSTALL_DIR="/usr/local/bin"
 CONFIG_DIR="$HOME/.ssh-tunnel-manager"
@@ -70,7 +70,7 @@ download_file() {
 
 # Get latest release version
 get_latest_version() {
-  local api_url="https://api.github.com/repos/yourusername/ssh-tunnel-manager/releases/latest"
+  local api_url="https://api.github.com/repos/lerndmina/SSH-Tunnel/releases/latest"
 
   if command_exists curl; then
     curl -fsSL "$api_url" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/'
@@ -208,6 +208,59 @@ verify_installation() {
   fi
 }
 
+# Deploy remote setup script
+deploy_remote_script() {
+  local remote_host="$1"
+  local remote_user="$2"
+  local public_key="$3"
+  
+  if [[ -z "$remote_host" ]]; then
+    echo -e "${YELLOW}Remote host not specified, skipping remote setup${NC}"
+    return 0
+  fi
+  
+  echo -e "${BLUE}Deploying remote setup script to $remote_host...${NC}"
+  
+  # Download the remote setup script
+  local temp_dir
+  temp_dir=$(mktemp -d)
+  trap "rm -rf $temp_dir" EXIT
+  
+  local remote_script_url="${REPO_URL}/raw/main/scripts/remote-setup.sh"
+  local remote_script_path="$temp_dir/remote-setup.sh"
+  
+  if ! download_file "$remote_script_url" "$remote_script_path"; then
+    echo -e "${RED}Failed to download remote setup script${NC}"
+    return 1
+  fi
+  
+  chmod +x "$remote_script_path"
+  
+  # Copy script to remote server
+  echo -e "${YELLOW}Copying setup script to remote server...${NC}"
+  if ! scp -o StrictHostKeyChecking=no "$remote_script_path" "${remote_user}@${remote_host}:/tmp/"; then
+    echo -e "${RED}Failed to copy script to remote server${NC}"
+    echo -e "${YELLOW}You can manually run the remote setup script from: $remote_script_url${NC}"
+    return 1
+  fi
+  
+  # Run remote setup script
+  echo -e "${YELLOW}Running remote setup script...${NC}"
+  local ssh_cmd="sudo bash /tmp/remote-setup.sh"
+  if [[ -n "$public_key" ]]; then
+    ssh_cmd="$ssh_cmd --public-key \"$public_key\""
+  fi
+  
+  if ssh -o StrictHostKeyChecking=no "${remote_user}@${remote_host}" "$ssh_cmd"; then
+    echo -e "${GREEN}✓ Remote server setup completed${NC}"
+    return 0
+  else
+    echo -e "${RED}Remote setup failed${NC}"
+    echo -e "${YELLOW}You can manually run: sudo bash /tmp/remote-setup.sh${NC}"
+    return 1
+  fi
+}
+
 # Show completion message
 show_completion() {
   echo
@@ -215,8 +268,9 @@ show_completion() {
   echo
   echo -e "${BLUE}Next steps:${NC}"
   echo -e "  1. Run '${CYAN}ssh-tunnel setup${NC}' to create your first tunnel"
-  echo -e "  2. Use '${CYAN}ssh-tunnel --help${NC}' to see all available commands"
-  echo -e "  3. Visit the documentation: ${CYAN}${REPO_URL}${NC}"
+  echo -e "  2. Use '${CYAN}ssh-tunnel remote-setup${NC}' to configure a cloud server"
+  echo -e "  3. Use '${CYAN}ssh-tunnel --help${NC}' to see all available commands"
+  echo -e "  4. Visit the documentation: ${CYAN}${REPO_URL}${NC}"
   echo
   echo -e "${BLUE}Configuration directory:${NC} $CONFIG_DIR"
   echo -e "${BLUE}Binary location:${NC} $INSTALL_DIR/$BINARY_NAME"
@@ -230,15 +284,20 @@ show_usage() {
   echo "Usage: $0 [OPTIONS]"
   echo
   echo "Options:"
-  echo "  --version VERSION    Install specific version (default: latest)"
-  echo "  --install-dir DIR    Install directory (default: $INSTALL_DIR)"
-  echo "  --config-dir DIR     Config directory (default: $CONFIG_DIR)"
-  echo "  --help              Show this help message"
+  echo "  --version VERSION       Install specific version (default: latest)"
+  echo "  --install-dir DIR       Install directory (default: $INSTALL_DIR)"
+  echo "  --config-dir DIR        Config directory (default: $CONFIG_DIR)"
+  echo "  --remote-host HOST      Remote server to configure for tunneling"
+  echo "  --remote-user USER      Remote server username (default: root)"
+  echo "  --public-key KEY        Public key to deploy to remote server"
+  echo "  --help                  Show this help message"
   echo
   echo "Examples:"
-  echo "  $0                           # Install latest version"
-  echo "  $0 --version v1.2.3          # Install specific version"
-  echo "  $0 --install-dir ~/bin       # Install to custom directory"
+  echo "  $0                                    # Install latest version"
+  echo "  $0 --version v1.2.3                  # Install specific version"
+  echo "  $0 --install-dir ~/bin               # Install to custom directory"
+  echo "  $0 --remote-host 1.2.3.4             # Install and setup remote server"
+  echo "  $0 --remote-host server.com --remote-user ubuntu --public-key \"\$(cat ~/.ssh/id_rsa.pub)\""
   echo
 }
 
@@ -256,6 +315,18 @@ parse_args() {
       ;;
     --config-dir)
       CONFIG_DIR="$2"
+      shift 2
+      ;;
+    --remote-host)
+      REMOTE_HOST="$2"
+      shift 2
+      ;;
+    --remote-user)
+      REMOTE_USER="$2"
+      shift 2
+      ;;
+    --public-key)
+      PUBLIC_KEY="$2"
       shift 2
       ;;
     --help)
@@ -280,6 +351,9 @@ main() {
 
   # Parse arguments
   parse_args "$@"
+  
+  # Set default remote user if not specified
+  REMOTE_USER="${REMOTE_USER:-root}"
 
   # Detect platform
   platform=$(detect_platform)
@@ -299,6 +373,13 @@ main() {
   setup_config
 
   if verify_installation; then
+    # Deploy remote setup script if requested
+    if [[ -n "$REMOTE_HOST" ]]; then
+      echo
+      echo -e "${BLUE}=== Remote Server Setup ===${NC}"
+      deploy_remote_script "$REMOTE_HOST" "$REMOTE_USER" "$PUBLIC_KEY"
+    fi
+    
     show_completion
   else
     echo -e "${RED}Installation completed but verification failed${NC}"

@@ -70,6 +70,7 @@ Features:
 	// Add subcommands
 	rootCmd.AddCommand(
 		newSetupCommand(),
+		newInteractiveCommand(),
 		newListCommand(),
 		newStartCommand(),
 		newStopCommand(),
@@ -80,6 +81,7 @@ Features:
 		newBackupCommand(),
 		newMonitorCommand(),
 		newDiagnosticsCommand(),
+		newRemoteSetupCommand(),
 		newTemplateCommand(),
 	)
 

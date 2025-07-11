@@ -41,16 +41,18 @@ const (
 
 // Model represents the TUI model
 type Model struct {
-	state       State
-	list        list.Model
-	textInput   textinput.Model
-	tunnelMgr   *tunnel.Manager
-	sshMgr      *ssh.KeyManager
-	configMgr   *config.Manager
-	currentForm map[string]string
-	formFields  []string
-	formIndex   int
-	message     string
+	state           State
+	list            list.Model
+	textInput       textinput.Model
+	tunnelMgr       *tunnel.Manager
+	sshMgr          *ssh.KeyManager
+	configMgr       *config.Manager
+	currentForm     map[string]string
+	formFields      []string
+	formIndex       int
+	message         string
+	selectedTunnel  string
+	confirmAction   string
 }
 
 var (
@@ -299,6 +301,15 @@ func (m Model) createTunnel() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
+	// Show progress message
+	m.message = "Creating tunnel configuration and setting up SSH keys..."
+
+	// Create the configuration and setup SSH keys
+	return m.setupTunnelWithKeys(name, remoteHost, remotePort, user)
+}
+
+// setupTunnelWithKeys creates a tunnel configuration and sets up SSH keys
+func (m Model) setupTunnelWithKeys(name, remoteHost string, remotePort int, user string) (tea.Model, tea.Cmd) {
 	// Create tunnel configuration
 	tunnelConfig := &config.Config{
 		TunnelName: name,
@@ -322,10 +333,30 @@ func (m Model) createTunnel() (tea.Model, tea.Cmd) {
 		},
 	}
 
+	// Save configuration first
 	if err := m.configMgr.SaveConfig(tunnelConfig); err != nil {
-		m.message = fmt.Sprintf("Failed to save tunnel: %v", err)
+		m.message = fmt.Sprintf("Failed to save tunnel configuration: %v", err)
+		m.state = StateMainMenu
+		return m, nil
+	}
+
+	// Generate SSH keys for this tunnel
+	if err := m.generateTunnelKeys(tunnelConfig); err != nil {
+		m.message = fmt.Sprintf("Failed to generate SSH keys: %v", err)
+		m.state = StateMainMenu
+		return m, nil
+	}
+
+	// Test SSH connection to the cloud server
+	if err := m.testSSHConnection(tunnelConfig); err != nil {
+		m.message = fmt.Sprintf("Warning: SSH connection test failed: %v", err)
 	} else {
-		m.message = fmt.Sprintf("Tunnel '%s' created successfully!", name)
+		// Try to deploy the public key to the remote server
+		if err := m.deployKeyToRemote(tunnelConfig); err != nil {
+			m.message = fmt.Sprintf("Tunnel created but key deployment failed: %v", err)
+		} else {
+			m.message = fmt.Sprintf("Tunnel '%s' created successfully with SSH keys deployed!", name)
+		}
 	}
 
 	m.state = StateMainMenu
@@ -387,6 +418,53 @@ func (m Model) updateManageTunnels(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "ctrl+c":
 		return m, tea.Quit
+	case "s":
+		// Start selected tunnel
+		if m.selectedTunnel != "" {
+			if err := m.tunnelMgr.Start(m.selectedTunnel); err != nil {
+				m.message = fmt.Sprintf("Failed to start tunnel '%s': %v", m.selectedTunnel, err)
+			} else {
+				m.message = fmt.Sprintf("Tunnel '%s' started successfully", m.selectedTunnel)
+			}
+		}
+		return m, nil
+	case "t":
+		// Stop selected tunnel
+		if m.selectedTunnel != "" {
+			if err := m.tunnelMgr.Stop(m.selectedTunnel); err != nil {
+				m.message = fmt.Sprintf("Failed to stop tunnel '%s': %v", m.selectedTunnel, err)
+			} else {
+				m.message = fmt.Sprintf("Tunnel '%s' stopped successfully", m.selectedTunnel)
+			}
+		}
+		return m, nil
+	case "r":
+		// Restart selected tunnel
+		if m.selectedTunnel != "" {
+			if err := m.tunnelMgr.Restart(m.selectedTunnel); err != nil {
+				m.message = fmt.Sprintf("Failed to restart tunnel '%s': %v", m.selectedTunnel, err)
+			} else {
+				m.message = fmt.Sprintf("Tunnel '%s' restarted successfully", m.selectedTunnel)
+			}
+		}
+		return m, nil
+	case "d":
+		// Delete selected tunnel
+		if m.selectedTunnel != "" {
+			m.state = StateConfirm
+			m.confirmAction = "delete_tunnel"
+			m.message = fmt.Sprintf("Are you sure you want to delete tunnel '%s'?", m.selectedTunnel)
+		}
+		return m, nil
+	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
+		// Select tunnel by number
+		configNames := m.configMgr.ListConfigs()
+		index := int(msg.String()[0] - '1')
+		if index >= 0 && index < len(configNames) {
+			m.selectedTunnel = configNames[index]
+			m.message = fmt.Sprintf("Selected tunnel: %s", m.selectedTunnel)
+		}
+		return m, nil
 	}
 	return m, nil
 }
@@ -395,21 +473,55 @@ func (m Model) updateManageTunnels(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m Model) viewManageTunnels() string {
 	configNames := m.configMgr.ListConfigs()
 
-	content := "Active Tunnels:\n\n"
+	content := "Available Tunnels:\n\n"
 	if len(configNames) == 0 {
 		content += "No tunnels configured. Create a new tunnel first.\n"
 	} else {
 		for i, name := range configNames {
 			status := "Stopped"
+			statusColor := "31" // Red
 			if tunnelStatus, err := m.tunnelMgr.GetStatus(name); err == nil && tunnelStatus != nil {
 				status = tunnelStatus.Status.String()
+				if status == "running" {
+					statusColor = "32" // Green
+				} else if status == "starting" || status == "stopping" {
+					statusColor = "33" // Yellow
+				}
 			}
-			content += fmt.Sprintf("%d. %s [%s]\n", i+1, name, status)
+			
+			selection := " "
+			if name == m.selectedTunnel {
+				selection = "►"
+			}
+			
+			content += fmt.Sprintf("%s %d. %-20s [\033[%sm%s\033[0m]\n", 
+				selection, i+1, name, statusColor, status)
+		}
+		
+		content += "\n"
+		if m.selectedTunnel != "" {
+			content += fmt.Sprintf("Selected: %s\n\n", m.selectedTunnel)
+			content += "Actions:\n"
+			content += "  [s] Start tunnel\n"
+			content += "  [t] Stop tunnel\n"
+			content += "  [r] Restart tunnel\n"
+			content += "  [d] Delete tunnel\n\n"
+		}
+		content += "Select tunnel by number (1-9)\n"
+	}
+
+	var messageSection string
+	if m.message != "" {
+		if strings.Contains(m.message, "successfully") {
+			messageSection = "\n" + statusMessageStyle(m.message) + "\n"
+		} else {
+			messageSection = "\n" + errorMessageStyle(m.message) + "\n"
 		}
 	}
 
-	return fmt.Sprintf("\n%s\n\n%s\n\n%s",
+	return fmt.Sprintf("\n%s%s\n\n%s\n\n%s",
 		titleStyle.Render("Manage Tunnels"),
+		messageSection,
 		content,
 		"Press 'esc' to go back",
 	)
@@ -424,15 +536,49 @@ func (m Model) updateSSHKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case "ctrl+c":
 		return m, tea.Quit
+	case "g":
+		// Generate new key pair
+		m.message = "Generating new SSH key pair..."
+		keyPath := "~/.ssh/id_ed25519_tunnel"
+		if err := m.sshMgr.GenerateKeyPair("ed25519", keyPath); err != nil {
+			m.message = fmt.Sprintf("Failed to generate key pair: %v", err)
+		} else {
+			m.message = "SSH key pair generated successfully at " + keyPath
+		}
+		return m, nil
+	case "t":
+		// Test SSH connection (will need host/user input)
+		m.message = "SSH connection testing feature coming soon..."
+		return m, nil
+	case "v":
+		// View existing keys
+		m.message = "Key listing feature coming soon..."
+		return m, nil
 	}
 	return m, nil
 }
 
 // viewSSHKeys renders SSH key management
 func (m Model) viewSSHKeys() string {
-	return fmt.Sprintf("\n%s\n\n%s\n\n%s",
+	content := "SSH Key Management:\n\n"
+	content += "Available Actions:\n"
+	content += "  [g] Generate new SSH key pair\n"
+	content += "  [t] Test SSH connection\n"
+	content += "  [v] View existing SSH keys\n\n"
+
+	var messageSection string
+	if m.message != "" {
+		if strings.Contains(m.message, "successfully") {
+			messageSection = statusMessageStyle(m.message) + "\n\n"
+		} else {
+			messageSection = errorMessageStyle(m.message) + "\n\n"
+		}
+	}
+
+	return fmt.Sprintf("\n%s\n\n%s%s\n%s",
 		titleStyle.Render("SSH Key Management"),
-		"SSH key management options will be implemented here...",
+		messageSection,
+		content,
 		"Press 'esc' to go back",
 	)
 }
@@ -513,13 +659,30 @@ func (m Model) viewInput() string {
 func (m Model) updateConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc", "n":
-		m.state = StateMainMenu
+		m.state = StateManageTunnels
+		m.confirmAction = ""
+		m.message = ""
 		return m, nil
 	case "ctrl+c":
 		return m, tea.Quit
 	case "y", "enter":
 		// Process confirmation
-		m.state = StateMainMenu
+		if m.confirmAction == "delete_tunnel" && m.selectedTunnel != "" {
+			// Stop tunnel if running
+			if err := m.tunnelMgr.Stop(m.selectedTunnel); err != nil {
+				// Log error but continue with deletion
+			}
+			
+			// Delete configuration
+			if err := m.configMgr.DeleteConfig(m.selectedTunnel); err != nil {
+				m.message = fmt.Sprintf("Failed to delete tunnel: %v", err)
+			} else {
+				m.message = fmt.Sprintf("Tunnel '%s' deleted successfully", m.selectedTunnel)
+				m.selectedTunnel = ""
+			}
+		}
+		m.state = StateManageTunnels
+		m.confirmAction = ""
 		return m, nil
 	}
 	return m, nil
@@ -527,22 +690,51 @@ func (m Model) updateConfirm(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 // viewConfirm renders confirmation dialog
 func (m Model) viewConfirm() string {
+	var confirmText string
+	if m.confirmAction == "delete_tunnel" && m.selectedTunnel != "" {
+		confirmText = fmt.Sprintf("Are you sure you want to delete tunnel '%s'?", m.selectedTunnel)
+	} else {
+		confirmText = "Are you sure?"
+	}
+
 	return fmt.Sprintf("\n%s\n\n%s\n\n%s",
-		titleStyle.Render("Confirm"),
-		"Are you sure? (y/N)",
+		titleStyle.Render("Confirm Action"),
+		confirmText,
 		"Press 'y' to confirm, 'n' or 'esc' to cancel",
 	)
 }
 
-// StartInteractiveMode starts the interactive TUI
-func StartInteractiveMode() error {
-	model, err := NewModel()
-	if err != nil {
-		return fmt.Errorf("failed to create TUI model: %w", err)
+// generateTunnelKeys generates SSH keys for a tunnel
+func (m *Model) generateTunnelKeys(cfg *config.Config) error {
+	// Generate primary SSH key for connecting to cloud server
+	if err := m.sshMgr.GenerateKeyPair("ed25519", cfg.SSH.PrivateKeyPath); err != nil {
+		return fmt.Errorf("failed to generate primary SSH key: %w", err)
 	}
 
-	p := tea.NewProgram(model, tea.WithAltScreen())
-	_, err = p.Run()
+	// Generate natted key for reverse connections
+	if err := m.sshMgr.GenerateKeyPair("ed25519", cfg.SSH.NattedKeyPath); err != nil {
+		return fmt.Errorf("failed to generate natted SSH key: %w", err)
+	}
 
-	return err
+	return nil
+}
+
+// testSSHConnection tests SSH connectivity to the cloud server
+func (m *Model) testSSHConnection(cfg *config.Config) error {
+	return m.sshMgr.TestConnection(cfg.CloudServer.IP, cfg.CloudServer.User, cfg.SSH.PrivateKeyPath, cfg.CloudServer.Port)
+}
+
+// deployKeyToRemote deploys the public key to the remote server
+func (m *Model) deployKeyToRemote(cfg *config.Config) error {
+	return m.sshMgr.DeployPublicKey(cfg.CloudServer.IP, cfg.CloudServer.Port, cfg.CloudServer.User, cfg.SSH.PrivateKeyPath)
+}
+
+// StartInteractiveMode starts the simple command-line interface
+func StartInteractiveMode() error {
+	tui, err := NewSimpleTUI()
+	if err != nil {
+		return fmt.Errorf("failed to create TUI: %v", err)
+	}
+	
+	return tui.Run()
 }

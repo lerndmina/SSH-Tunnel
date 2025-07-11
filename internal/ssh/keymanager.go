@@ -261,3 +261,16 @@ func (km *KeyManager) GetPublicKeyContent(keyPath string) (string, error) {
 	}
 	return string(data), nil
 }
+
+// DeployPublicKey deploys a public key to a remote server
+func (km *KeyManager) DeployPublicKey(host string, port int, user, keyPath string) error {
+	// First test if we can connect with the current key
+	err := km.TestConnection(host, user, keyPath, port)
+	if err == nil {
+		// Connection already works, key might already be deployed
+		return nil
+	}
+
+	// Try to install the key using ssh-copy-id equivalent
+	return km.InstallPublicKey(host, user, keyPath, port)
+}
