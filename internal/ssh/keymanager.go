@@ -129,7 +129,7 @@ func (km *KeyManager) GetFingerprint(host string, port int) (string, error) {
 			go ssh.DiscardRequests(reqs)
 			go func() {
 				for newChannel := range chans {
-					newChannel.Reject(ssh.UnknownChannelType, "not implemented")
+					_ = newChannel.Reject(ssh.UnknownChannelType, "not implemented")
 				}
 			}()
 		}()

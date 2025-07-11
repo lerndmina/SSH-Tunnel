@@ -51,7 +51,6 @@ type Model struct {
 	formFields  []string
 	formIndex   int
 	message     string
-	err         error
 }
 
 var (
