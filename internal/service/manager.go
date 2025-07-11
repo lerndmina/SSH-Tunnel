@@ -5,8 +5,8 @@ import (
 	"runtime"
 
 	"github.com/kardianos/service"
-	"github.com/ssh-tunnel-manager/ssh-tunnel-manager/internal/config"
-	"github.com/ssh-tunnel-manager/ssh-tunnel-manager/pkg/logger"
+	"github.com/lerndmina/SSH-Tunnel/internal/config"
+	"github.com/lerndmina/SSH-Tunnel/pkg/logger"
 )
 
 // ServiceManager handles system service operations

@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ssh-tunnel-manager/ssh-tunnel-manager/internal/config"
-	"github.com/ssh-tunnel-manager/ssh-tunnel-manager/pkg/logger"
+	"github.com/lerndmina/SSH-Tunnel/internal/config"
+	"github.com/lerndmina/SSH-Tunnel/pkg/logger"
 )
 
 // Status represents the status of a tunnel

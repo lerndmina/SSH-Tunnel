@@ -5,7 +5,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/ssh-tunnel-manager/ssh-tunnel-manager/internal/config"
+	"github.com/lerndmina/SSH-Tunnel/internal/config"
 )
 
 // Template represents a configuration template

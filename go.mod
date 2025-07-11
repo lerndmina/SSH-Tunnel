@@ -1,4 +1,4 @@
-module github.com/ssh-tunnel-manager/ssh-tunnel-manager
+module github.com/lerndmina/SSH-Tunnel
 
 go 1.23.0
 

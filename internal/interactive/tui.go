@@ -9,9 +9,9 @@ import (
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/ssh-tunnel-manager/ssh-tunnel-manager/internal/config"
-	"github.com/ssh-tunnel-manager/ssh-tunnel-manager/internal/ssh"
-	"github.com/ssh-tunnel-manager/ssh-tunnel-manager/internal/tunnel"
+	"github.com/lerndmina/SSH-Tunnel/internal/config"
+	"github.com/lerndmina/SSH-Tunnel/internal/ssh"
+	"github.com/lerndmina/SSH-Tunnel/internal/tunnel"
 )
 
 // MenuItem represents a menu item

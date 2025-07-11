@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/lerndmina/SSH-Tunnel/internal/config"
+	"github.com/lerndmina/SSH-Tunnel/internal/interactive"
+	"github.com/lerndmina/SSH-Tunnel/pkg/logger"
 	"github.com/spf13/cobra"
-	"github.com/ssh-tunnel-manager/ssh-tunnel-manager/internal/config"
-	"github.com/ssh-tunnel-manager/ssh-tunnel-manager/internal/interactive"
-	"github.com/ssh-tunnel-manager/ssh-tunnel-manager/pkg/logger"
 )
 
 var (
